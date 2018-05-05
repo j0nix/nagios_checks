@@ -1,24 +1,30 @@
 #! /usr/bin/python
 # j0nix 2018
+# Check elasticsearch cluster status
 
 #import modules
 import sys
-from optparse import OptionParser
-import urllib2
 try:
-    import json
+  import json
 except ImportError:
-    import simplejson as json
-import requests
+  import simplejson as json
+try:
+  import requests
+except:
+  print "\n\r\t[MISSING module 'python-requests']\n\r"
+  exit(3)
+
 from optparse import OptionParser, TitledHelpFormatter
+
 from requests.packages.urllib3.exceptions import InsecureRequestWarning
+
 requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
 
 SSL_VERIFY = False
 
-# static es auth data
-usr = 'nagios'
-pwd = 'soigan'
+# ES CREDENTIALS
+usr = '''elastic'''
+pwd = '''changeme'''
 
 #NAGIOS return codes
 RETURN_CODE = { "UNKNOWN":3,"OK":0,"WARNING":1,"CRITICAL":2}
@@ -29,45 +35,64 @@ def build_parser():
     parser.add_option("-H", "--host", dest="host", help="Host to connect to", default="127.0.0.1")
     parser.add_option("-p", "--port", dest="port", help="Port where http API is published", type="int", default=9200)
     parser.add_option("-n", "--nr_of_nodes", dest="nr_of_nodes", help="Number of cluster nodes this cluster have", type="int")
-    parser.add_option("-d", "--debug", dest="debug", help="Enable debug", action="store_true")
-    parser.add_option("-s", "--ssl", dest="ssl", help="Enable ssl", action="store_true")
-    parser.add_option("-x", "--sslauth", dest="sslauth", help="Enable ssl with auth credentials (user creadentials is defined in script)", action="store_true")
+    parser.add_option("-d", dest="debug", help="Enable debug", action="store_true")
+    parser.add_option("-s", dest="ssl", help="Enable ssl", action="store_true")
+    parser.add_option("-x", dest="auth", help="Use auth credentials, defined in script code", action="store_true")
     return parser
+
 def validate_args(p,o):
 
     if not o.nr_of_nodes:
         p.error("Number of nodes in cluster is required")
         sys.exit(RETURN_CODE['UNKNOWN'])
 
-# Your magic check funktion
+# Magic check funktion
 def check(options):
 
-	if options.sslauth:
+	if options.ssl:
 		location = 'https://%s:%d/_cluster/health' % (options.host, options.port)
-		r = requests.get(location, auth=(usr, pwd), verify=SSL_VERIFY)
-	elif options.ssl:
-		location = 'https://%s:%d/_cluster/health' % (options.host, options.port)
-		r = requests.get(location, verify=SSL_VERIFY)
 	else:
 		location = 'http://%s:%d/_cluster/health' % (options.host, options.port)
-		r = requests.get(location)
 
-	if r.status_code != requests.codes.ok:
-            	print r.text
-        	sys.exit(RETURN_CODE['UNKNOWN'])
+	if options.auth:
+
+	  try:
+	    r = requests.get(location, auth=(usr, pwd), verify=SSL_VERIFY)
+	  except requests.exceptions.ConnectionError as e:
+	    print "{} => {}".format(location,e)
+            sys.exit(RETURN_CODE['UNKNOWN'])
+
+        else:
+
+	  try:
+	    r = requests.get(location, verify=SSL_VERIFY)
+	  except requests.exceptions.ConnectionError as e:
+	    print "{} => {}".format(location,e)
+            sys.exit(RETURN_CODE['UNKNOWN'])
+
+        try:
+
+	  if r.status_code != requests.codes.ok:
+            r.raise_for_status()
+
+        except requests.exceptions.HTTPError as e:
+	  print "[{}] {} => {}".format(r.status_code,location,e)
+          sys.exit(RETURN_CODE['UNKNOWN'])
+
 
         if options.debug:
                 print "\n\rDEBUG::check:\n\r{}".format(r.text)
 
         try:
             es_cluster_health = r.json()
+
         except ValueError:
-            print "status unknown, could not parse JSON response"
+            print "JSON_PARSE_ERROR => {}".format(r.text)
             sys.exit(RETURN_CODE['UNKNOWN'])
 
         return es_cluster_health
 
-# Validate your check result against thresholds
+# Validate check result against thresholds
 def validate_and_notify(cluster_health, options):
 
     if options.debug:
