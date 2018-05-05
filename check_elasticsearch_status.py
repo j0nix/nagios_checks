@@ -35,9 +35,9 @@ def build_parser():
     parser.add_option("-H", "--host", dest="host", help="Host to connect to", default="127.0.0.1")
     parser.add_option("-p", "--port", dest="port", help="Port where http API is published", type="int", default=9200)
     parser.add_option("-n", "--nr_of_nodes", dest="nr_of_nodes", help="Number of cluster nodes this cluster have", type="int")
-    parser.add_option("-d", dest="debug", help="Enable debug", action="store_true")
-    parser.add_option("-s", dest="ssl", help="Enable ssl", action="store_true")
-    parser.add_option("-x", dest="auth", help="Use auth credentials, defined in script code", action="store_true")
+    parser.add_option("-d", "--debug", dest="debug", help="Enable debug", action="store_true")
+    parser.add_option("-s", "--ssl", dest="ssl", help="Enable ssl", action="store_true")
+    parser.add_option("-x", "--auth", dest="auth", help="Use auth credentials, defined in script code", action="store_true")
     return parser
 
 def validate_args(p,o):
