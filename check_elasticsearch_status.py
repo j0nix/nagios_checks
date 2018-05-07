@@ -10,7 +10,7 @@ except ImportError:
   import simplejson as json
 try:
   import requests
-except:
+except ImportError:
   print "\n\r\t[MISSING module 'python-requests']\n\r"
   exit(3)
 
