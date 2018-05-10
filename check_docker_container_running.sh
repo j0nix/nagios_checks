@@ -70,6 +70,7 @@ if [ "$RUNNING" == "false" ]; then
   if [[ $RESTART == 1 ]]
   then
 	echo "docker restart $CONTAINER"
+	docker restart $CONTAINER
   fi
   exit 2
 fi
