@@ -1,75 +1,121 @@
-#!/usr/bin/python
-# j0nix 2017
- 
-# import modules
-import sys
-from optparse import OptionParser
- 
-#NAGIOS return codes
-RETURN_CODE = { "OK":0,"WARNING":1,"CRITICAL":2,"UNKNOWN":3 }
- 
-# Parse options
-def build_parser():
-    parser = OptionParser()
-    parser.add_option("-H", "--host", dest="host", help="Host to connect to.", default="127.0.0.1")
-    parser.add_option("-w", "--warn", dest="warning", help="Warning threshold", type="int")
-    parser.add_option("-c", "--crit", dest="critical", help="Critical threshold", type="int")
-    parser.add_option("-d", "--debug", dest="debug", help="Enable debug", action="store_true")
-    return parser
- 
-# Check if we have required args and makes sense
-def validate_args(p,o):
- 
-    if not o.warning:
-        p.error("Warning level required")
-        sys.exit(RETURN_CODE['UNKNOWN'])
- 
-    if not o.critical:
-        p.error("Critical level required")
-        sys.exit(RETURN_CODE['UNKNOWN'])
- 
-    if o.warning == o.critical:
-        p.error("Warning and Critical cant be the same value")
-        sys.exit(RETURN_CODE['UNKNOWN'])
- 
-    if o.warning > o.critical:
-        p.error("Warning can't be larger than Critical")
-        sys.exit(RETURN_CODE['UNKNOWN'])
- 
-# Your magic check funktion
-def check(options):
- 
-    host = options.host
-    if options.debug:
-        print "{}".format(host)
- 
-    return 5
- 
-# Validate your check result against thresholds
-def validate_and_notify(result, options):
- 
-        if result >= options.critical:
-            print 'CRITICAL'
-            sys.exit(RETURN_CODE['CRITICAL'])
-        elif result >= options.warning:
-            print 'WARNING'
-            sys.exit(RETURN_CODE['WARNING'])
-        elif result < options.warning:
-            print 'OK'
-            sys.exit(RETURN_CODE['OK'])
-        else
-            print "UNKNOWN ({})".format(result)
-            sys.exit(RETURN_CODE['UNKNOWN'])
- 
- # logical script flow
-def main():
- 
-  # Get, parse and validate args
-  parser = build_parser()
-  options, _args = parser.parse_args()
-  validate_args(parser,options)
-  result = check(options) # check stuff
-  validate_and_notify(result,options)
- 
-if __name__ == '__main__':
-  main()
+"""
+   A short description of what this check do
+"""
+
+import os, sys, logging
+from argparse import ArgumentParser
+from argparse import RawTextHelpFormatter
+
+epilog = """
+Example)
+   python {} -s 3
+___________________________________________________________
+Infra @ Nordax
+""".format(
+    sys.argv[0]
+)
+
+## Argument parser setup
+parser = ArgumentParser(
+    formatter_class=RawTextHelpFormatter,
+    description=__doc__,
+    epilog=epilog,
+    prog=os.path.basename(sys.argv[0]),
+)
+
+parser.add_argument(
+    "-v", "--verbose", action="count", default=0, help="increase log level"
+)
+parser.add_argument(
+    "-q", "--quiet", action="count", default=0, help="decrease log level"
+)
+
+""" Example of your script arguments, please adjust """
+parser.add_argument(
+    "-d",
+    "--dest",
+    dest="dest",
+    metavar="ip",
+    default="127.0.01",
+    help="Destination (Default: 127.0.0.1)",
+)
+
+""" Example of required arguemnts """
+required = parser.add_argument_group(title="required arguments")
+required.add_argument(
+    "-w",
+    "--warning",
+    dest="warning",
+    metavar="N",
+    type=int,
+    required=True,
+    help="WARNING threshold",
+)
+
+required.add_argument(
+    "-c",
+    "--critical",
+    dest="critical",
+    metavar="N",
+    type=int,
+    required=True,
+    help="CRITICAL threshold",
+)
+
+"""Logging setup"""
+
+
+def setLogging(args):
+    log_adjust = max(min(args.quiet - args.verbose, 2), -2)
+    logging.basicConfig(
+        level=logging.INFO + log_adjust * 10,
+        format="%(asctime)s [%(levelname)s]\t[%(module)s]\t%(message)s",
+    )
+
+
+EXIT = {
+    "OK": 0,  	   # Service is OK
+    "WARNING": 1,  # Service has a WARNING
+    "CRITICAL": 2, # Service is in a CRITICAL status
+    "UNKNOWN": 3,  # Service status is UNKNOWN
+}
+
+""" The main function for your script """
+
+
+def main(args):
+    ## Here you start fiddle with your check code
+    logging.debug("This is a skeleton, your arguments => {}".format(args))
+
+    my_result = 5
+
+    # Sanitycheck
+    if args.warning >= args.critical:
+	print("\n\n!Warning threshold needs to be less than critical threshold\n\n___________________________________________________________\n")
+	parser.print_help(sys.stderr)
+	sys.exit(0)
+
+    # let's check if critical
+    if my_result >= args.critical:
+	print("CRITICAL - {} is greater than critical threshold ({})".format(my_result,args.critical))
+	sys.exit(EXIT["CRITICAL"])
+
+    # let's check if warning
+    if my_result >= args.warning:
+	print("WARNING - {}, is above or equal to warning threshold ({})".format(my_result,args.warning))
+	sys.exit(EXIT["WARNING"])
+
+    # Default exit everything is OK
+    print("All OK!")
+    sys.exit(EXIT["OK"])
+
+
+if __name__ == "__main__":
+    # Parse arguments
+    args = parser.parse_args()
+    # Set loglevel
+    setLogging(args)
+    # Run your check
+    main(args)
+
+# Jon Svendsen 2020
